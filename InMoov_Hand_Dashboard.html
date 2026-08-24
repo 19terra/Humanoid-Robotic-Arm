@@ -1,0 +1,1932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InMoov Bionic Hand - Assembly & AI Vision Lab</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Three.js + loaders/controls for 3D STL Viewer (r128 classic UMD builds) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        /* Custom Theme & Fonts */
+        body {
+            background-color: #FAF8F5;
+            color: #1E293B;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        /* Chart container constraint rules */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 380px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 340px;
+            }
+        }
+
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #F1F5F9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+        }
+
+        .tab-btn.active {
+            border-bottom-color: #D97706;
+            color: #D97706;
+            font-weight: 600;
+        }
+
+        /* Canvas visualizer styling */
+        #handCanvas, #fingerCanvas, #cadCanvas {
+            background: radial-gradient(circle, #ffffff 0%, #f8fafc 100%);
+            border-radius: 12px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-amber-100 selection:text-amber-900">
+
+    <!-- Chosen Palette: Warm Sand & Industrial Tech (Background: #FAF8F5, Slate/Dark Neutral: #1E293B, Amber Accent: #D97706, Emerald Success: #059669, Sky/Cyan AI Accent: #0284C7) -->
+    <!-- Application Structure Plan: The application is structured into five core interactive domains: 1) Hardware & 3D Print Matrix (Searchable database + Chart.js slicer analytics), 2) CAD Inspection & Hinge Mechanics (Interactive Canvas 3D CAD projection renderer for RobPart2 forearm shell & 3-segment finger hinge with angle/view controls), 3) Guided Assembly Blueprint (Step-by-step interactive workflow with drill size callouts and assembly progress tracker), 4) AI & Electronics Control Lab (Live Canvas Hand & Servo Simulator supporting 5-finger state inputs and $00000-$11111 serial string generation, Arduino PWM mapping table, and Python cvzone snippet builder), and 5) Technical Quick Reference (Drill bit lookup calculator, Glue selector, and Troubleshooting guide). This modular design enables builders to cross-reference print parameters, inspect CAD segment geometries like RobPart2, track physical build progress, and test computer vision serial payloads. -->
+    <!-- Visualization & Content Choices: 
+    1. 3D Print Specs -> Slicer Bar Chart (Chart.js) -> Hover/Filter -> Compare infill % and wall thickness by part group -> Chart.js Canvas.
+    2. Fastener Distribution -> Hardware Donut Chart (Chart.js) -> Interactive legend -> Quick hardware audit -> Chart.js Canvas.
+    3. CAD Part Inspection (RobPart2 Shell & Finger Hinges) -> Interactive HTML5 Canvas 3D Projection -> Perspective rotation sliders, feature highlight toggles, drill size callouts -> HTML5 Canvas + Math matrix transformation.
+    4. Servo & Hand Gestures -> Live HTML5 Canvas Hand Visualizer -> Interactive Finger Toggles & Serial Input ($10111) -> Dynamic visual update of 5 fingers flexing/extending and servo rotation -> HTML5 Canvas + Vanilla JS.
+    5. Drill Sizes & Hinges -> Interactive Drill Lookup Matrix -> Filter by part/hole type -> Clear visual bit sizing -> HTML/Tailwind CSS grid.
+    6. Assembly Workflow -> Interactive Multi-step Accordion with Progress Bar -> Step check-off state -> Dynamic % completion update -> Vanilla JS DOM management.
+    7. Real 3D Printed Part Geometry -> WebGL STL Viewer (Three.js) in a carousel -> Orbit/zoom inspection of actual uploaded STL meshes, slide between parts -> Three.js Canvas + Vanilla JS.
+    Confirming NO SVG graphics and NO Mermaid JS used. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <!-- Top Navigation Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-3">
+                    <span class="text-2xl">🤖</span>
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-900 tracking-tight leading-none">InMoov Bionic Hand & Forearm</h1>
+                        <p class="text-xs text-slate-500 font-medium mt-0.5">Interactive Master Assembly Blueprint & AI Integration Workspace</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                        Right Hand (Mirrored for Left)
+                    </span>
+                    <a href="https://inmoov.fr/inmoov-hand/" target="_blank" rel="noopener" class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">
+                        🌐 Official i2Hand Model ↗
+                    </a>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <nav class="flex space-x-8 -mb-px overflow-x-auto" id="mainTabs">
+                <button onclick="switchTab('parts')" id="tab-parts" class="tab-btn active py-3 px-1 border-b-2 border-transparent text-sm font-medium whitespace-nowrap text-slate-600 hover:text-slate-900 transition-colors">
+                    ⚙️ Parts & Printing Spec
+                </button>
+                <button onclick="switchTab('cad-inspector')" id="tab-cad-inspector" class="tab-btn py-3 px-1 border-b-2 border-transparent text-sm font-medium whitespace-nowrap text-slate-600 hover:text-slate-900 transition-colors">
+                    🔍 CAD Part & Hinge Inspector
+                </button>
+                <button onclick="switchTab('viewer3d')" id="tab-viewer3d" class="tab-btn py-3 px-1 border-b-2 border-transparent text-sm font-medium whitespace-nowrap text-slate-600 hover:text-slate-900 transition-colors">
+                    🧊 3D modelled Parts
+                </button>
+                <button onclick="switchTab('assembly')" id="tab-assembly" class="tab-btn py-3 px-1 border-b-2 border-transparent text-sm font-medium whitespace-nowrap text-slate-600 hover:text-slate-900 transition-colors">
+                    🛠️ Assembly Blueprint & Progress
+                </button>
+                <button onclick="switchTab('simulator')" id="tab-simulator" class="tab-btn py-3 px-1 border-b-2 border-transparent text-sm font-medium whitespace-nowrap text-slate-600 hover:text-slate-900 transition-colors">
+                    ⚡ AI Vision & Servo Lab
+                </button>
+                <button onclick="switchTab('reference')" id="tab-reference" class="tab-btn py-3 px-1 border-b-2 border-transparent text-sm font-medium whitespace-nowrap text-slate-600 hover:text-slate-900 transition-colors">
+                    📐 Drill Bit & Materials Matrix
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Urgent Notices Banner -->
+    <div class="bg-amber-50 border-b border-amber-200">
+        <div class="max-w-7xl mx-auto py-2.5 px-4 sm:px-6 lg:px-8 text-xs sm:text-sm text-amber-900 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <div class="flex items-center space-x-2">
+                <span class="text-base">⚠️</span>
+                <span><strong>Calibration Notice:</strong> Print the <strong>CALIBRATOR</strong> object first! If fitment is too tight, set slicer Horizontal Expansion to <strong>-0.15mm</strong>.</span>
+            </div>
+            <div class="flex items-center space-x-2 text-xs bg-white/80 px-2.5 py-1 rounded border border-amber-300">
+                <span>💡 Component Highlight: <strong>RobPart2 / RobPart5</strong> forearm shell requires 6mm & 3mm drill passes!</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- ================= TAB 1: PARTS & PRINTING SPECIFICATIONS ================= -->
+        <section id="sec-parts" class="space-y-6">
+            <!-- Section Overview -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <h2 class="text-lg font-bold text-slate-900 mb-1">3D Printing Specifications & Parts Inventory</h2>
+                <p class="text-sm text-slate-600">
+                    This section details the 3D printing parameters (infill, wall thickness, support structures, and rafts) required for all 22+ discrete components of the InMoov right hand and forearm, including main structural shells like <code class="bg-slate-100 px-1 py-0.5 rounded text-amber-700 font-mono">RobPart2</code> and <code class="bg-slate-100 px-1 py-0.5 rounded text-amber-700 font-mono">RobPart5</code>. Explore print profiles and review fastener distribution charts below.
+                </p>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Chart 1: Slicer Parameters -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="text-sm font-bold text-slate-800">Print Specifications by Component Group</h3>
+                            <span class="text-xs text-slate-500">Infill vs Wall Thickness</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mb-4">All structural parts maintain a mandatory 30% density with tailored wall shells to resist tendon tension.</p>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="slicerChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 2: Fasteners Distribution -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="text-sm font-bold text-slate-800">Hardware & Fasteners Inventory Breakdown</h3>
+                            <span class="text-xs text-slate-500">Bolts, Filament Pins & Tendons</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mb-4">Proportion of structural joining hardware required across hinges and wrist joints.</p>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="hardwareChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parts Database Table with Filter -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900">3D Printed Parts Directory</h3>
+                        <p class="text-xs text-slate-500">Filter by category or search part name</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        <input type="text" id="partSearch" oninput="filterPartsTable()" placeholder="Search part (e.g. robpart2)..." class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500 w-full sm:w-48">
+                        <select id="categoryFilter" onchange="filterPartsTable()" class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            <option value="ALL">All Categories</option>
+                            <option value="Hand & Fingers">Hand & Fingers</option>
+                            <option value="Forearm & Covers">Forearm & Covers</option>
+                            <option value="Wrist Mechanism">Wrist Mechanism</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-700">
+                        <thead class="bg-slate-100 text-slate-800 uppercase text-[10px] tracking-wider font-semibold border-b border-slate-200">
+                            <tr>
+                                <th class="py-3 px-4">Part Name</th>
+                                <th class="py-3 px-4">Qty</th>
+                                <th class="py-3 px-4">Category</th>
+                                <th class="py-3 px-4">Infill %</th>
+                                <th class="py-3 px-4">Wall (mm)</th>
+                                <th class="py-3 px-4">Supports / Raft</th>
+                                <th class="py-3 px-4">Special Instructions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="partsTableBody" class="divide-y divide-slate-200">
+                            <!-- Populated via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= TAB 2: CAD PART & HINGE INSPECTOR ================= -->
+        <section id="sec-cad-inspector" class="hidden space-y-6">
+            <!-- Section Overview -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <h2 class="text-lg font-bold text-slate-900 mb-1">Interactive CAD Part & Joint Mechanics Inspector</h2>
+                <p class="text-sm text-slate-600">
+                    Inspect 3D geometry models, hinge drill tolerances, and tendon routing channels for InMoov components. Switch between the <strong>RobPart2 / RobPart5 Forearm Shell</strong> CAD render and the <strong>Finger Phalanges Joint Assembly</strong> below.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Interactive Canvas Visualizer -->
+                <div class="lg:col-span-7 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center">
+                    <div class="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+                        <div>
+                            <h3 id="inspectorTitle" class="text-sm font-bold text-slate-900">Forearm Shell CAD Model (RobPart2 / RobPart5)</h3>
+                            <p id="inspectorSub" class="text-xs text-slate-500">Rotate view angle and inspect key mounting features</p>
+                        </div>
+                        <div class="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg">
+                            <button onclick="setInspectorMode('robpart2')" id="btn-mode-robpart2" class="px-2.5 py-1 text-xs font-semibold rounded bg-white shadow text-amber-700">RobPart2 Shell</button>
+                            <button onclick="setInspectorMode('finger')" id="btn-mode-finger" class="px-2.5 py-1 text-xs font-semibold rounded text-slate-600 hover:text-slate-900">Finger Joint</button>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Graphic for CAD / Finger -->
+                    <div class="w-full flex justify-center">
+                        <canvas id="cadCanvas" width="500" height="340" class="w-full max-w-[500px] h-[340px] mb-4 border border-slate-100 cursor-grab active:cursor-grabbing"></canvas>
+                    </div>
+
+                    <!-- Interactive Dynamic Controls -->
+                    <div id="cadControlsRobPart" class="w-full bg-slate-50 p-3 rounded-lg border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                        <div class="flex items-center space-x-2 w-full sm:w-auto">
+                            <span class="font-semibold text-slate-700">3D Rotation:</span>
+                            <input type="range" id="cadRotSlider" min="-180" max="180" value="25" oninput="updateCadRotation(this.value)" class="w-full sm:w-40 accent-amber-600">
+                            <span id="cadRotVal" class="font-mono text-amber-700 font-bold min-w-[36px]">25°</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <label class="flex items-center space-x-1 cursor-pointer">
+                                <input type="checkbox" id="chkWireframe" onchange="drawCadInspector()" class="rounded text-amber-600">
+                                <span class="text-slate-700">Wireframe</span>
+                            </label>
+                            <label class="flex items-center space-x-1 cursor-pointer">
+                                <input type="checkbox" id="chkHighlightHoles" checked onchange="drawCadInspector()" class="rounded text-amber-600">
+                                <span class="text-slate-700">Highlight Drill Holes</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="cadControlsFinger" class="hidden w-full bg-slate-50 p-3 rounded-lg border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                        <div class="flex items-center space-x-2">
+                            <button onclick="setFingerView('exploded')" id="btn-view-exploded" class="px-2.5 py-1 text-xs font-semibold rounded bg-white shadow text-amber-700 border border-amber-200">Exploded</button>
+                            <button onclick="setFingerView('assembled')" id="btn-view-assembled" class="px-2.5 py-1 text-xs font-semibold rounded text-slate-600 hover:text-slate-900">Assembled</button>
+                            <button onclick="setFingerView('tendons')" id="btn-view-tendons" class="px-2.5 py-1 text-xs font-semibold rounded text-slate-600 hover:text-slate-900">Tendons & Sensor</button>
+                        </div>
+                        <div class="flex items-center space-x-2 w-full sm:w-auto">
+                            <span class="font-semibold text-slate-700">Flexion Angle:</span>
+                            <input type="range" id="flexionSlider" min="0" max="90" value="0" oninput="updateFingerAngle(this.value)" class="w-full sm:w-28 accent-amber-600">
+                            <span id="flexionAngleVal" class="font-mono text-amber-700 font-bold min-w-[32px]">0°</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feature Detail Cards & Specifications -->
+                <div class="lg:col-span-5 space-y-4">
+                    <!-- RobPart2 Detail Panel -->
+                    <div id="panel-robpart2" class="space-y-4">
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <h4 class="text-xs font-bold uppercase tracking-wider text-amber-600">Component: RobPart2 / RobPart5</h4>
+                                    <h3 class="text-sm font-bold text-slate-900">Main Forearm Structural Shell</h3>
+                                </div>
+                                <span class="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-mono">Brim Required</span>
+                            </div>
+                            <p class="text-xs text-slate-600 mb-3">
+                                <code class="bg-slate-100 px-1 py-0.5 rounded text-amber-700 font-mono">RobPart2</code> forms the half-cylindrical structural armor of the forearm. It mates with <code class="bg-slate-100 px-1 py-0.5 rounded text-amber-700 font-mono">RobPart5</code> to create the interior chamber housing the servo bed and tendon tensioners.
+                            </p>
+                            <div class="space-y-2 text-[11px]">
+                                <div class="p-2.5 bg-slate-50 rounded border border-slate-200 flex justify-between items-center">
+                                    <span><strong>Top Curved Groove:</strong> Seats <code class="text-amber-700 font-mono">RotaWrist1</code></span>
+                                    <span class="font-mono text-slate-500">30% Infill</span>
+                                </div>
+                                <div class="p-2.5 bg-slate-50 rounded border border-slate-200 flex justify-between items-center">
+                                    <span><strong>Side Alignment Hole:</strong> Redrill with <strong class="text-amber-700">6.0mm drill</strong></span>
+                                    <span class="font-mono text-slate-500">Thumb Servo</span>
+                                </div>
+                                <div class="p-2.5 bg-slate-50 rounded border border-slate-200 flex justify-between items-center">
+                                    <span><strong>Lower Heat-Seat Cavity:</strong> 3mm Nut insertion</span>
+                                    <span class="font-mono text-slate-500">Use Lighter</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-2">
+                            <strong class="font-bold block">💡 Assembly Pro-Tip for RobPart2:</strong>
+                            <p class="text-[11px]">
+                                Clamp <code class="bg-amber-100 px-1 py-0.5 rounded font-mono">RobPart2</code> and <code class="bg-amber-100 px-1 py-0.5 rounded font-mono">RobPart5</code> together using heavy pliers while applying Acetone (for ABS) or CA glue (for PLA). Avoid exterior overflow to maintain smooth outer forearm skin.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Finger Hinge Detail Panel -->
+                    <div id="panel-finger" class="hidden space-y-3">
+                        <!-- Segment 1: Distal Phalanx (Tip) -->
+                        <div id="card-phalanx-1" class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm transition hover:border-amber-300">
+                            <div class="flex justify-between items-start mb-1">
+                                <h4 class="text-xs font-bold uppercase tracking-wider text-amber-600">Part 1: Distal Phalanx (Tip)</h4>
+                                <span class="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-mono">index3 / majeure3</span>
+                            </div>
+                            <p class="text-xs text-slate-600 mb-2">Houses tactile carbon foam sensor, tip hinge pin, and tendon line knot cavity.</p>
+                            <div class="grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-2 rounded border border-slate-100">
+                                <div><strong>Hinge Hole:</strong> <span class="font-mono text-amber-700">2.0 mm (Nail Pin)</span></div>
+                                <div><strong>Tendon Knot:</strong> <span class="font-mono text-slate-700">Triple Knot</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Segment 2: Intermediate Phalanx (Middle) -->
+                        <div id="card-phalanx-2" class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm transition hover:border-amber-300">
+                            <div class="flex justify-between items-start mb-1">
+                                <h4 class="text-xs font-bold uppercase tracking-wider text-sky-600">Part 2: Intermediate Phalanx</h4>
+                                <span class="text-[10px] bg-sky-100 text-sky-800 px-2 py-0.5 rounded font-mono">index2 / majeure2</span>
+                            </div>
+                            <p class="text-xs text-slate-600 mb-2">Connects distal tip to proximal base. Dual clevis forks and internal tendon channels.</p>
+                            <div class="grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-2 rounded border border-slate-100">
+                                <div><strong>Outer Hinge:</strong> <span class="font-mono text-amber-700">3.0 mm (Tight)</span></div>
+                                <div><strong>Inner Hinge:</strong> <span class="font-mono text-amber-700">3.2-3.5 mm (Smooth)</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Segment 3: Proximal Phalanx (Base Hinge) -->
+                        <div id="card-phalanx-3" class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm transition hover:border-amber-300">
+                            <div class="flex justify-between items-start mb-1">
+                                <h4 class="text-xs font-bold uppercase tracking-wider text-emerald-600">Part 3: Proximal Base Phalanx</h4>
+                                <span class="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono">index1 / majeure1</span>
+                            </div>
+                            <p class="text-xs text-slate-600 mb-2">Anchors to palm block (<code class="bg-slate-100 px-1 py-0.5 rounded">Wristlarge</code>). Smooth rotational alignment under load.</p>
+                            <div class="grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-2 rounded border border-slate-100">
+                                <div><strong>Palm Pivot:</strong> <span class="font-mono text-amber-700">3.2 mm Clearance</span></div>
+                                <div><strong>Cover Screws:</strong> <span class="font-mono text-amber-700">3.0 mm Redrill</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= TAB: 3D MODELLED PARTS (STL VIEWER) ================= -->
+        <section id="sec-viewer3d" class="hidden space-y-6">
+            <!-- Section Overview -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <h2 class="text-lg font-bold text-slate-900 mb-1">3D Modelled Parts — Live STL Viewer</h2>
+                <p class="text-sm text-slate-600">
+                    Browse the real uploaded STL meshes for every printed InMoov component. Pick a part from the carousel on the left to load it into the viewer, then drag to orbit, scroll to zoom, and right-click drag to pan. Use the arrows to slide to the next or previous part.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- LEFT COLUMN: Carousel Part Selector -->
+                <div class="lg:col-span-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-bold text-slate-900">Part Carousel</h3>
+                        <span id="carouselCount" class="text-[11px] font-mono text-slate-500">1 / 15</span>
+                    </div>
+
+                    <!-- Slide strip with prev/next arrows -->
+                    <div class="flex items-center gap-2 mb-3">
+                        <button onclick="carouselStep(-1)" aria-label="Previous part" class="shrink-0 w-8 h-8 rounded-full bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-700 flex items-center justify-center font-bold transition">‹</button>
+                        <div id="carouselTrackWrap" class="flex-1 overflow-hidden">
+                            <div id="carouselTrack" class="flex gap-2 transition-transform duration-300 ease-out"></div>
+                        </div>
+                        <button onclick="carouselStep(1)" aria-label="Next part" class="shrink-0 w-8 h-8 rounded-full bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-700 flex items-center justify-center font-bold transition">›</button>
+                    </div>
+
+                    <!-- Full scrollable list so user can pick any part directly -->
+                    <div id="carouselList" class="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: 3D WebGL Viewer -->
+                <div class="lg:col-span-8 bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                        <div>
+                            <h3 id="viewerPartName" class="text-sm font-bold text-slate-900">Loading…</h3>
+                            <p id="viewerPartMeta" class="text-xs text-slate-500 font-mono">—</p>
+                        </div>
+                        <div class="flex items-center flex-wrap gap-1.5">
+                            <button onclick="toggleViewerWireframe()" id="btnViewerWire" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition">Wireframe</button>
+                            <button onclick="toggleViewerAutorotate()" id="btnViewerRotate" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition">Auto-Rotate</button>
+                            <button onclick="resetViewerCamera()" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition">Reset View</button>
+                        </div>
+                    </div>
+
+                    <div id="viewerCanvasHolder" class="relative w-full rounded-lg overflow-hidden border border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100" style="height: 480px;">
+                        <canvas id="stlViewerCanvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+                        <div id="viewerLoadingOverlay" class="absolute inset-0 flex items-center justify-center bg-white/70 text-xs font-semibold text-slate-500">
+                            Loading mesh…
+                        </div>
+                        <div class="absolute bottom-2 left-2 text-[10px] text-slate-400 bg-white/70 px-2 py-1 rounded font-mono">
+                            drag = orbit · scroll = zoom · right-drag = pan
+                        </div>
+                    </div>
+
+                    <p id="viewerPartNote" class="text-xs text-slate-500 mt-3"></p>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= TAB 3: STEP-BY-STEP ASSEMBLY BLUEPRINT ================= -->
+        <section id="sec-assembly" class="hidden space-y-6">
+            <!-- Section Overview & Progress Tracker -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Guided Assembly Blueprint</h2>
+                        <p class="text-sm text-slate-600">Follow the 4 structural phases to assemble the forearm, wrist, finger hinges, and tactile sensors.</p>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center space-x-4 min-w-[240px]">
+                        <div class="flex-1">
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="text-slate-700">Assembly Progress</span>
+                                <span id="progressPercent" class="text-amber-600">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                                <div id="progressBar" class="bg-amber-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <span id="progressCount" class="text-xs text-slate-500 font-mono">0/16</span>
+                    </div>
+                </div>
+
+                <!-- Step Navigator Accordion Buttons -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 border-t border-slate-100 pt-3">
+                    <button onclick="scrollToStep('step1')" class="px-3 py-2 text-xs font-medium rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 transition text-left border border-amber-200">
+                        <strong>Step 1:</strong> Forearm & Servo Bed
+                    </button>
+                    <button onclick="scrollToStep('step2')" class="px-3 py-2 text-xs font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition text-left border border-slate-200">
+                        <strong>Step 2:</strong> Wrist & Servo Gear
+                    </button>
+                    <button onclick="scrollToStep('step3')" class="px-3 py-2 text-xs font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition text-left border border-slate-200">
+                        <strong>Step 3:</strong> Finger Hinges & Lines
+                    </button>
+                    <button onclick="scrollToStep('step4')" class="px-3 py-2 text-xs font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition text-left border border-slate-200">
+                        <strong>Step 4:</strong> Tactile Foam Sensors
+                    </button>
+                </div>
+            </div>
+
+            <!-- ASSEMBLY STEPS CONTAINERS -->
+
+            <!-- Step 1 -->
+            <div id="step1" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <span class="w-7 h-7 rounded-full bg-amber-500 text-slate-900 font-bold flex items-center justify-center text-xs">1</span>
+                        <h3 class="font-bold text-sm sm:text-base">Step 1: Forearm Base & Servo Bed Assembly</h3>
+                    </div>
+                    <span class="text-xs bg-slate-800 px-2.5 py-1 rounded text-amber-400 font-mono">Key Tools: 2mm, 6mm Drills, Lighter</span>
+                </div>
+                <div class="p-5 space-y-4">
+                    <p class="text-xs sm:text-sm text-slate-600">
+                        Prepare the structural forearm shell components (<code class="bg-slate-100 px-1 py-0.5 rounded text-amber-700">RobPart2</code> to <code class="bg-slate-100 px-1 py-0.5 rounded text-amber-700">RobPart5</code>), assemble the main body halves, and install the spring tensioner addon.
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-3">
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">1.1 Clean & Glue RobParts</strong>
+                                    <span class="text-slate-500">Trim anti-warp tabs with a craft knife. Clamp & glue <strong>RobPart2 + RobPart5</strong> with Acetone/Epoxy. Repeat for <strong>RobPart3 + RobPart4</strong>. Avoid exterior glue overflow.</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">1.2 Redrill Side Holes & Heat-Seat Nuts</strong>
+                                    <span class="text-slate-500">Redrill Robpart2 side holes with a <strong>6mm drill</strong> for the optional thumb servo. Heat two M3 nuts with a lighter flame to press-fit into Robpart5 cavities without cracking overhangs.</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">1.3 Seat & Secure Simple Servo Bed</strong>
+                                    <span class="text-slate-500">Ensure the bed is completely seated at the bottom of Robpart5. Fix with 2 wood screws or Epoxy.</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="space-y-3">
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">1.4 Install Tensioner Addon (Tensioner.stl)</strong>
+                                    <span class="text-slate-500">Attach 0.5mm x 1cm extension springs. Glue small guiding plastic tubes inside spring rings to prevent fishing line erosion. <em>Note: Springs must remain at rest (unstretched) during default setup!</em></span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">1.5 Servo Pulleys & Calibrate 90° -> 0°</strong>
+                                    <span class="text-slate-500">Redrill ServoPulley holes with a <strong>2mm drill</strong>. Run Arduino script to set servos to <strong>90°</strong>, attach pulleys, then execute script to set servos to <strong>0°</strong>. Do not rotate manually after.</span>
+                                </div>
+                            </label>
+
+                            <div class="p-3 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-900">
+                                📌 <strong>Pro Tip:</strong> Mount <code class="bg-amber-100 px-1 py-0.5 rounded">RobCableFront</code> and <code class="bg-amber-100 px-1 py-0.5 rounded">RobCableBack</code> onto the Simple Servo Bed right after setting pulley zeros.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div id="step2" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <span class="w-7 h-7 rounded-full bg-amber-500 text-slate-900 font-bold flex items-center justify-center text-xs">2</span>
+                        <h3 class="font-bold text-sm sm:text-base">Step 2: Wrist Mechanism & Rotation Gear</h3>
+                    </div>
+                    <span class="text-xs bg-slate-800 px-2.5 py-1 rounded text-amber-400 font-mono">Key Tools: 2.5mm, 8mm Drills, Grease</span>
+                </div>
+                <div class="p-5 space-y-4">
+                    <p class="text-xs sm:text-sm text-slate-600">
+                        Assemble the rotating wrist mechanism. Ensure proper alignment between <code class="bg-slate-100 px-1 py-0.5 rounded text-amber-700">RotaWrist1</code> and <code class="bg-slate-100 px-1 py-0.5 rounded text-amber-700">RobPart2</code> to guarantee full range of motion.
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-3">
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">2.1 Align & Glue RotaWrist1</strong>
+                                    <span class="text-slate-500">Align the square section of <code>RotaWrist1</code> with the single hole on <code>RobPart2</code>. Temporarily seat the Robpart3/4 cover during gluing to ensure square alignment.</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">2.2 Mount 180° Wrist Servo (MG996)</strong>
+                                    <span class="text-slate-500">Mount an MG996 or similar 180° servo into the wrist bed. Secure using wood screws. (Note: standard 90° HK15298 servos lack full range).</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="space-y-3">
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">2.3 Redrill & Paint RotaWrist Parts</strong>
+                                    <span class="text-slate-500">Redrill <code>RotaWrist2</code> with a <strong>2.5mm drill</strong> (paint black to prevent grease yellowing). Redrill <code>RotaWrist3</code> with an <strong>8mm drill</strong>.</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">2.4 Mount Gears & CableHolderWrist</strong>
+                                    <span class="text-slate-500">Attach <code>CableHolderWrist</code> to the servo horn using 2-part epoxy. Apply white silicone grease between gears and mount <code>RotaWrist3</code> to the main drive gear.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div id="step3" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <span class="w-7 h-7 rounded-full bg-amber-500 text-slate-900 font-bold flex items-center justify-center text-xs">3</span>
+                        <h3 class="font-bold text-sm sm:text-base">Step 3: Finger Hinges, Tendons & Forearm Join</h3>
+                    </div>
+                    <span class="text-xs bg-slate-800 px-2.5 py-1 rounded text-amber-400 font-mono">Key Tools: 3mm, 3.2mm, 8mm Drills, 200LB Line</span>
+                </div>
+                <div class="p-5 space-y-4">
+                    <p class="text-xs sm:text-sm text-slate-600">
+                        Assemble individual finger joints using filament pins, route 200LB braided fishing line tendons through the 3-hole wrist system, and join the forearm structure.
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-3">
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">3.1 Drill & Pin Finger Hinges</strong>
+                                    <span class="text-slate-500">Redrill outer hinges with a <strong>3.0mm drill</strong> and inner hinges with <strong>3.2mm or 3.5mm</strong>. Glue joints with Acetone and insert 3mm filament pins cut flush with a knife.</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">3.2 Prepare 10x Tendon Lines</strong>
+                                    <span class="text-slate-500">Cut 10 pieces of 200LB braided fishing line to exactly <strong>75cm length</strong>. Avoid standard nylon line as it stretches under servo load.</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">3.3 Route Tendons & Wires</strong>
+                                    <span class="text-slate-500">Thread tension lines through <code>Wristlarge</code> and <code>Wristsmall</code>. Use top/bottom holes for tendons. <em>Middle holes are reserved for electrical sensor wires (omit Bolt_entretoise if using sensors).</em></span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="space-y-3">
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">3.4 Fasten Main Hand Bolts</strong>
+                                    <span class="text-slate-500">Redrill big hinges with an <strong>8mm drill</strong>. Secure <code>Wristlarge</code> to <code>Wristsmall</code> (8cm bolt), <code>Wristlarge</code> to thumb bottom (4cm bolt), and <code>Wristlarge</code> to <code>RobPart1</code> (6cm bolt).</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">3.5 Attach Forearm Cap (RobCap)</strong>
+                                    <span class="text-slate-500">Glue <code>RobCap</code> to <code>ElbowShaftGear</code> aligning square hole. Glue this total assembly into <code>RobPart5</code> slots.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4 -->
+            <div id="step4" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <span class="w-7 h-7 rounded-full bg-amber-500 text-slate-900 font-bold flex items-center justify-center text-xs">4</span>
+                        <h3 class="font-bold text-sm sm:text-base">Step 4: Finger Sensors & Final Finishing</h3>
+                    </div>
+                    <span class="text-xs bg-slate-800 px-2.5 py-1 rounded text-amber-400 font-mono">Key Tools: 2mm Drill, Conductive Foam, Epoxy</span>
+                </div>
+                <div class="p-5 space-y-4">
+                    <p class="text-xs sm:text-sm text-slate-600">
+                        Construct custom analog tactile pressure sensors using antistatic carbon foam and copper triangle contactors, then complete finger cover installation and silicone palm surface treatments.
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-3">
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">4.1 Assemble Tip Hinges with Metal Nails</strong>
+                                    <span class="text-slate-500">Glue fingertip to hinge tip aligning nail lines. Redrill hinge holes with a <strong>2mm drill</strong>. Use cut metal nails (not filament) for these small high-stress joints.</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">4.2 Construct Antistatic Carbon Foam Sensors</strong>
+                                    <span class="text-slate-500">Cut 3-4mm copper triangles and 4-5mm thick conductive foam rounds. Epoxy foam to tip hinge. Solder wires to copper triangles and epoxy flat under foam contact area.</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">4.3 Tie Tendon Knots & Glue Wires</strong>
+                                    <span class="text-slate-500">Pass lines through fingers. Tie multiple sturdy knots in braided lines at fingertips so they cannot pull through under tension. Secure knots and electrical wires with epoxy while finger is flexed.</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="space-y-3">
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">4.4 Install Covers & Trim Thumb Hinges</strong>
+                                    <span class="text-slate-500">Glue and screw finger covers into place to prevent backward joint hyperextension. Trim the two corners on the thumb hinge with a knife to clear hand cover friction.</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-start space-x-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs">
+                                <input type="checkbox" onchange="updateProgress()" class="step-check mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                                <div>
+                                    <strong class="text-slate-900 block">4.5 Palm Grip & Silicone Tips</strong>
+                                    <span class="text-slate-500">Apply Sugru or silicone sheets (such as kitchen heat protectors) to finger tips and palm for improved friction when grasping objects.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= TAB 4: AI VISION & SERVO CONTROL LAB ================= -->
+        <section id="sec-simulator" class="hidden space-y-6">
+            <!-- Section Overview -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <h2 class="text-lg font-bold text-slate-900 mb-1">AI Vision & Serial Protocol Simulator</h2>
+                <p class="text-sm text-slate-600">
+                    Test the 5-digit serial payload protocol (<code class="bg-slate-100 px-1 py-0.5 rounded text-amber-700 font-mono">$10111</code>) used by Python OpenCV / MediaPipe hand tracking to actuate the 5 servo motors via Arduino PWM outputs.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Interactive Hand & Servo Visualizer (Canvas) -->
+                <div class="lg:col-span-7 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center">
+                    <div class="w-full flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-900">Real-Time Bionic Hand Canvas</h3>
+                            <p class="text-xs text-slate-500">Visualized finger flexion & servo position state</p>
+                        </div>
+                        <span id="serialDisplayBadge" class="font-mono text-sm px-3 py-1 bg-slate-900 text-amber-400 rounded-lg font-bold">
+                            $11111
+                        </span>
+                    </div>
+
+                    <!-- Canvas Graphic -->
+                    <canvas id="handCanvas" width="380" height="320" class="w-full max-w-[380px] h-[320px] mb-4 border border-slate-100"></canvas>
+
+                    <!-- Interactive Finger Toggles -->
+                    <div class="w-full grid grid-cols-5 gap-2 mb-4">
+                        <button onclick="toggleFinger(0)" id="btn-f0" class="py-2 px-1 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-sm transition">
+                            Thumb<br><span id="angle-0" class="font-mono text-[10px] opacity-90">180°</span>
+                        </button>
+                        <button onclick="toggleFinger(1)" id="btn-f1" class="py-2 px-1 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-sm transition">
+                            Index<br><span id="angle-1" class="font-mono text-[10px] opacity-90">180°</span>
+                        </button>
+                        <button onclick="toggleFinger(2)" id="btn-f2" class="py-2 px-1 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-sm transition">
+                            Middle<br><span id="angle-2" class="font-mono text-[10px] opacity-90">180°</span>
+                        </button>
+                        <button onclick="toggleFinger(3)" id="btn-f3" class="py-2 px-1 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-sm transition">
+                            Ring<br><span id="angle-3" class="font-mono text-[10px] opacity-90">180°</span>
+                        </button>
+                        <button onclick="toggleFinger(4)" id="btn-f4" class="py-2 px-1 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-sm transition">
+                            Pinky<br><span id="angle-4" class="font-mono text-[10px] opacity-90">180°</span>
+                        </button>
+                    </div>
+
+                    <!-- Gesture Preset Buttons -->
+                    <div class="w-full flex flex-wrap gap-2 justify-center text-xs">
+                        <span class="text-slate-500 self-center font-medium">Quick Gestures:</span>
+                        <button onclick="applyGesture([1,1,1,1,1])" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-medium">✋ Open Hand</button>
+                        <button onclick="applyGesture([0,0,0,0,0])" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-medium">✊ Fist</button>
+                        <button onclick="applyGesture([0,1,1,0,0])" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-medium">✌️ Victory</button>
+                        <button onclick="applyGesture([1,1,0,0,1])" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-medium">🤟 Spider-Man</button>
+                        <button onclick="applyGesture([0,1,0,0,0])" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-medium">☝️ Point</button>
+                    </div>
+                </div>
+
+                <!-- Hardware & Serial Protocol Details -->
+                <div class="lg:col-span-5 space-y-4">
+                    <!-- Arduino Pin Mapping Table -->
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Arduino Servo Hardware Wiring</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs text-left">
+                                <thead class="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+                                    <tr>
+                                        <th class="py-2 px-3">Finger</th>
+                                        <th class="py-2 px-3">Arduino Pin</th>
+                                        <th class="py-2 px-3">State Code</th>
+                                        <th class="py-2 px-3">PWM Angle</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-slate-700">
+                                    <tr><td class="py-1.5 px-3 font-medium">Thumb</td><td class="py-1.5 px-3 font-mono text-amber-600 font-bold">Pin 7</td><td id="pin-st-0" class="py-1.5 px-3 font-mono">1</td><td id="pin-ang-0" class="py-1.5 px-3 font-mono">180°</td></tr>
+                                    <tr><td class="py-1.5 px-3 font-medium">Index</td><td class="py-1.5 px-3 font-mono text-amber-600 font-bold">Pin 9</td><td id="pin-st-1" class="py-1.5 px-3 font-mono">1</td><td id="pin-ang-1" class="py-1.5 px-3 font-mono">180°</td></tr>
+                                    <tr><td class="py-1.5 px-3 font-medium">Middle</td><td class="py-1.5 px-3 font-mono text-amber-600 font-bold">Pin 11</td><td id="pin-st-2" class="py-1.5 px-3 font-mono">1</td><td id="pin-ang-2" class="py-1.5 px-3 font-mono">180°</td></tr>
+                                    <tr><td class="py-1.5 px-3 font-medium">Ring</td><td class="py-1.5 px-3 font-mono text-amber-600 font-bold">Pin 8</td><td id="pin-st-3" class="py-1.5 px-3 font-mono">1</td><td id="pin-ang-3" class="py-1.5 px-3 font-mono">180°</td></tr>
+                                    <tr><td class="py-1.5 px-3 font-medium">Pinky</td><td class="py-1.5 px-3 font-mono text-amber-600 font-bold">Pin 10</td><td id="pin-st-4" class="py-1.5 px-3 font-mono">1</td><td id="pin-ang-4" class="py-1.5 px-3 font-mono">180°</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Python Code Snippet -->
+                    <div class="bg-slate-900 text-slate-100 p-4 rounded-xl shadow-sm text-xs font-mono space-y-2">
+                        <div class="flex justify-between items-center text-slate-400 border-b border-slate-800 pb-2">
+                            <span class="font-bold text-amber-400">Python + OpenCV + CVZone Script</span>
+                            <span>Baud: 9600</span>
+                        </div>
+                        <pre class="overflow-x-auto text-[11px] leading-relaxed text-slate-300">
+<span class="text-cyan-400">import</span> cvzone
+<span class="text-cyan-400">from</span> cvzone.HandTrackingModule <span class="text-cyan-400">import</span> HandDetector
+
+detector = HandDetector(maxHands=1, detectionCon=0.8)
+mySerial = cvzone.SerialObject(<span class="text-amber-300">"COM3"</span>, <span class="text-amber-300">9600</span>, digits=<span class="text-amber-300">1</span>)
+
+<span class="text-slate-500"># In main loop:</span>
+hands, img = detector.findHands(img)
+<span class="text-cyan-400">if</span> hands:
+    fingers = detector.fingersUp(hands[0])
+    mySerial.sendData(fingers) <span class="text-slate-500"># Sends '$10111'</span></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= TAB 5: TECHNICAL DRILL & MATERIALS MATRIX ================= -->
+        <section id="sec-reference" class="hidden space-y-6">
+            <!-- Section Overview -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <h2 class="text-lg font-bold text-slate-900 mb-1">Drill Bit Sizing & Materials Selector Matrix</h2>
+                <p class="text-sm text-slate-600">
+                    Use this quick-lookup calculator and technical reference table to select drill bit diameters, adhesives, and lubricant types for every step of the InMoov build.
+                </p>
+            </div>
+
+            <!-- Drill Bit Calculator Search -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Drill Bit Finder -->
+                <div class="md:col-span-1 bg-amber-50 p-5 rounded-xl border border-amber-200 space-y-4">
+                    <h3 class="text-sm font-bold text-amber-900 flex items-center space-x-2">
+                        <span>🔍</span>
+                        <span>Drill Bit Lookup Calculator</span>
+                    </h3>
+                    <p class="text-xs text-amber-800">Select the assembly component or joint type to find the required drill size:</p>
+                    <div>
+                        <label class="block text-xs font-semibold text-amber-900 mb-1">Target Component / Hole:</label>
+                        <select id="drillCalcSelect" onchange="lookupDrillBit()" class="w-full px-3 py-2 text-xs rounded-lg border border-amber-300 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            <option value="">-- Choose Component --</option>
+                            <option value="d2">ServoPulley Horn Holes</option>
+                            <option value="d2">Tactile Fingertip Sensor Joints</option>
+                            <option value="d25">RotaWrist2 Alignment Holes</option>
+                            <option value="d25">Wrist Cover Adaptor Holes</option>
+                            <option value="d3">Finger Hinge Outer Joint</option>
+                            <option value="d3">Finger Covers Screw Holes</option>
+                            <option value="d35">Finger Hinge Inner Joint (Clearance)</option>
+                            <option value="d35">Wrist Cover Main Hinges</option>
+                            <option value="d6">Robpart2 Side Extra Servo Hole</option>
+                            <option value="d8">RotaWrist3 Main Drive Hole</option>
+                            <option value="d8">Wristlarge Main Hinges</option>
+                        </select>
+                    </div>
+
+                    <div id="drillCalcResult" class="hidden bg-white p-4 rounded-lg border border-amber-300 space-y-1 text-xs">
+                        <div class="text-slate-500">Required Drill Size:</div>
+                        <div id="drillBitOutput" class="text-xl font-bold font-mono text-amber-600">--</div>
+                        <div id="drillBitNote" class="text-slate-600 text-[11px] pt-1">--</div>
+                    </div>
+                </div>
+
+                <!-- Materials & Glues Guide -->
+                <div class="md:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                    <h3 class="text-sm font-bold text-slate-900">Adhesives, Tendons & Lubricants Compatibility Guide</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <strong class="text-slate-900 block mb-1">🧪 ABS Plastic Adhesives</strong>
+                            <p class="text-slate-600">Pure <strong>Acetone</strong> or Zap-A-Gap melts ABS surfaces together for a permanent chemical weld. Use pliers to hold parts tight.</p>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <strong class="text-slate-900 block mb-1">🧪 PLA Plastic Adhesives</strong>
+                            <p class="text-slate-600">Use <strong>Zap-A-Gap (CA glue)</strong> or <strong>2-Part Epoxy</strong>. Acetone will NOT weld PLA plastic.</p>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <strong class="text-slate-900 block mb-1">🎣 Tendon Lines</strong>
+                            <p class="text-slate-600">Use <strong>200LB Braided Fishing Line</strong> only. Never use nylon monofilament line because nylon stretches under load.</p>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <strong class="text-slate-900 block mb-1">🧴 Gear Lubrication</strong>
+                            <p class="text-slate-600">Use <strong>White Silicone Grease</strong> between rotating wrist gears. Petroleum greases turn printed parts yellow over time.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Full Master Technical Lookup Table -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-4 border-b border-slate-200 bg-slate-50/50">
+                    <h3 class="text-sm font-bold text-slate-900">Full Assembly Hole Drilling Matrix</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-700">
+                        <thead class="bg-slate-100 text-slate-800 uppercase text-[10px] tracking-wider font-semibold border-b border-slate-200">
+                            <tr>
+                                <th class="py-3 px-4">Component</th>
+                                <th class="py-3 px-4">Hole Location</th>
+                                <th class="py-3 px-4">Drill Bit Size</th>
+                                <th class="py-3 px-4">Purpose / Hardware</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200">
+                            <tr><td class="py-2.5 px-4 font-semibold">ServoPulley</td><td class="py-2.5 px-4">Horn mount holes</td><td class="py-2.5 px-4 font-mono font-bold text-amber-600">2.0 mm</td><td class="py-2.5 px-4">Mount servo horn black actuator</td></tr>
+                            <tr><td class="py-2.5 px-4 font-semibold">Sensor Tip Hinges</td><td class="py-2.5 px-4">Tiny tip joint</td><td class="py-2.5 px-4 font-mono font-bold text-amber-600">2.0 mm</td><td class="py-2.5 px-4">Fits cut metal nail hinge pins</td></tr>
+                            <tr><td class="py-2.5 px-4 font-semibold">RotaWrist2</td><td class="py-2.5 px-4">Alignment lining holes</td><td class="py-2.5 px-4 font-mono font-bold text-amber-600">2.5 mm</td><td class="py-2.5 px-4">Smooth wrist lining pass-through</td></tr>
+                            <tr><td class="py-2.5 px-4 font-semibold">Wristsmall / Wristlarge</td><td class="py-2.5 px-4">Cover adaptation holes</td><td class="py-2.5 px-4 font-mono font-bold text-amber-600">2.5 mm</td><td class="py-2.5 px-4">Secures finger constraint covers</td></tr>
+                            <tr><td class="py-2.5 px-4 font-semibold">Finger Hinges (Outer)</td><td class="py-2.5 px-4">External knuckle hinge</td><td class="py-2.5 px-4 font-mono font-bold text-amber-600">3.0 mm</td><td class="py-2.5 px-4">Tight fit for 3mm filament pegs / bolts</td></tr>
+                            <tr><td class="py-2.5 px-4 font-semibold">Finger Covers</td><td class="py-2.5 px-4">All cover holes</td><td class="py-2.5 px-4 font-mono font-bold text-amber-600">3.0 mm</td><td class="py-2.5 px-4">Fastener screws for joint limiters</td></tr>
+                            <tr><td class="py-2.5 px-4 font-semibold">Finger Hinges (Inner)</td><td class="py-2.5 px-4">Internal knuckle pivot</td><td class="py-2.5 px-4 font-mono font-bold text-amber-600">3.2 - 3.5 mm</td><td class="py-2.5 px-4">Clearance fit for smooth rotation</td></tr>
+                            <tr><td class="py-2.5 px-4 font-semibold">RobPart2 Side</td><td class="py-2.5 px-4">Extra thumb servo hole</td><td class="py-2.5 px-4 font-mono font-bold text-amber-600">6.0 mm</td><td class="py-2.5 px-4">Mount double-actuated thumb servo</td></tr>
+                            <tr><td class="py-2.5 px-4 font-semibold">RotaWrist3</td><td class="py-2.5 px-4">Main gear central shaft</td><td class="py-2.5 px-4 font-mono font-bold text-amber-600">8.0 mm</td><td class="py-2.5 px-4">Accepts 8mm main wrist bolt</td></tr>
+                            <tr><td class="py-2.5 px-4 font-semibold">Wristlarge / Small Hinges</td><td class="py-2.5 px-4">Main wrist pivot hinges</td><td class="py-2.5 px-4 font-mono font-bold text-amber-600">8.0 mm</td><td class="py-2.5 px-4">Accepts 8mm x 8cm structural bolt</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+            InMoov Open Source Robotics Project created by Gael Langevin. Interactive Blueprint Workspace built for high-efficiency assembly & AI integration testing.
+        </div>
+    </footer>
+
+    <!-- STL model data (base64-encoded binary/ASCII STL meshes), must be loaded before app.js logic runs -->
+    <script src="inmoov_stl_data.js"></script>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // ================= DATA STORES =================
+
+        // 3D Printing Parts Database
+        const partsData = [
+            { name: "Thumb", qty: 1, cat: "Hand & Fingers", infill: 30, wall: 2.0, support: "No Support / No Raft", note: "Standard finger build" },
+            { name: "Index", qty: 1, cat: "Hand & Fingers", infill: 30, wall: 1.5, support: "No Support / No Raft", note: "Print index3 part" },
+            { name: "Majeure (Middle)", qty: 1, cat: "Hand & Fingers", infill: 30, wall: 1.5, support: "No Support / No Raft", note: "Print majeure3 part" },
+            { name: "RingFinger", qty: 1, cat: "Hand & Fingers", infill: 30, wall: 1.5, support: "No Support / No Raft", note: "Print ringfinger3 part" },
+            { name: "Auriculaire (Pinky)", qty: 1, cat: "Hand & Fingers", infill: 30, wall: 1.5, support: "No Support / No Raft", note: "Print auriculaire3 part" },
+            { name: "Bolt_entretoise", qty: 1, cat: "Hand & Fingers", infill: 30, wall: 2.0, support: "No Support", note: "Omit if using electrical sensor wires" },
+            { name: "Wristlarge", qty: 1, cat: "Hand & Fingers", infill: 30, wall: 2.0, support: "No Support", note: "Main hand base plate" },
+            { name: "Wristsmall", qty: 1, cat: "Hand & Fingers", infill: 30, wall: 2.0, support: "No Support", note: "Restrains backward hand bending" },
+            { name: "topsurface", qty: 1, cat: "Hand & Fingers", infill: 30, wall: 2.0, support: "No Support", note: "Palm upper shield" },
+            { name: "coverfinger", qty: 1, cat: "Hand & Fingers", infill: 30, wall: 2.0, support: "WITH SUPPORT", note: "Print standing vertically for cleanest surface" },
+            { name: "robcap3", qty: 1, cat: "Forearm & Covers", infill: 30, wall: 2.0, support: "No Support", note: "Forearm end cap" },
+            { name: "robpart2", qty: 1, cat: "Forearm & Covers", infill: 30, wall: 2.0, support: "With Brim", note: "Forearm shell structure (redrill 6mm side hole)" },
+            { name: "robpart3", qty: 1, cat: "Forearm & Covers", infill: 30, wall: 2.0, support: "With Brim", note: "Forearm upper cover" },
+            { name: "robpart4", qty: 1, cat: "Forearm & Covers", infill: 30, wall: 2.0, support: "With Brim", note: "Forearm upper cover mate" },
+            { name: "robpart5", qty: 1, cat: "Forearm & Covers", infill: 30, wall: 2.0, support: "With Brim", note: "Forearm lower servo bed housing" },
+            { name: "ElbowShaftGear", qty: 1, cat: "Forearm & Covers", infill: 30, wall: 2.0, support: "No Support", note: "Required if bicep is attached" },
+            { name: "rotawrist1", qty: 1, cat: "Wrist Mechanism", infill: 30, wall: 2.0, support: "No Support", note: "Crucial square hole orientation alignment" },
+            { name: "rotawrist2", qty: 1, cat: "Wrist Mechanism", infill: 30, wall: 2.0, support: "No Support", note: "Paint matte black to hide grease yellowing" },
+            { name: "rotawrist3", qty: 1, cat: "Wrist Mechanism", infill: 30, wall: 2.0, support: "No Support", note: "Redrill central hole 8mm" },
+            { name: "WristGears", qty: 1, cat: "Wrist Mechanism", infill: 30, wall: 2.0, support: "High Quality Spec", note: "Print with finest printer resolution" },
+            { name: "CableHolderWrist", qty: 1, cat: "Wrist Mechanism", infill: 30, wall: 2.0, support: "No Support", note: "Epoxy directly to servo output shaft" }
+        ];
+
+        // State for AI Hand Visualizer (1 = Open / Extended, 0 = Closed / Flexed)
+        let fingerStates = [1, 1, 1, 1, 1]; // [Thumb, Index, Middle, Ring, Pinky]
+
+        // State for Inspector Mode
+        let activeInspectorMode = 'robpart2'; // 'robpart2' or 'finger'
+        let cadRotationDeg = 25;
+
+        // State for Finger Hinge Mechanics Visualizer
+        let currentFingerView = 'exploded'; // 'exploded', 'assembled', 'tendons'
+        let fingerFlexionAngle = 0; // 0 to 90 degrees
+
+        // Initialize application on load
+        window.addEventListener('DOMContentLoaded', () => {
+            renderPartsTable(partsData);
+            initCharts();
+            drawHand();
+            drawCadInspector();
+            updateProgress();
+            initStlCarousel();
+        });
+
+        // Tab Navigation
+        function switchTab(tabId) {
+            const tabs = ['parts', 'cad-inspector', 'viewer3d', 'assembly', 'simulator', 'reference'];
+            tabs.forEach(t => {
+                document.getElementById(`sec-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).classList.remove('active');
+            });
+            document.getElementById(`sec-${tabId}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+
+            if (tabId === 'simulator') {
+                drawHand();
+            } else if (tabId === 'cad-inspector') {
+                drawCadInspector();
+            } else if (tabId === 'viewer3d') {
+                initThreeViewer();
+                setTimeout(onViewerResize, 50);
+            }
+        }
+
+        // Smooth scroll to assembly step
+        function scrollToStep(stepId) {
+            const el = document.getElementById(stepId);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // ================= PARTS TABLE FILTERING =================
+        function renderPartsTable(data) {
+            const tbody = document.getElementById('partsTableBody');
+            tbody.innerHTML = '';
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+                tr.innerHTML = `
+                    <td class="py-2.5 px-4 font-semibold text-slate-900">${item.name}</td>
+                    <td class="py-2.5 px-4 font-mono">${item.qty}x</td>
+                    <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700">${item.cat}</span></td>
+                    <td class="py-2.5 px-4 font-mono text-amber-600 font-bold">${item.infill}%</td>
+                    <td class="py-2.5 px-4 font-mono">${item.wall} mm</td>
+                    <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-semibold ${item.support.includes('WITH SUPPORT') ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}">${item.support}</span></td>
+                    <td class="py-2.5 px-4 text-slate-500">${item.note}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterPartsTable() {
+            const query = document.getElementById('partSearch').value.toLowerCase();
+            const category = document.getElementById('categoryFilter').value;
+
+            const filtered = partsData.filter(item => {
+                const matchesSearch = item.name.toLowerCase().includes(query) || item.note.toLowerCase().includes(query);
+                const matchesCat = (category === 'ALL') || (item.cat === category);
+                return matchesSearch && matchesCat;
+            });
+
+            renderPartsTable(filtered);
+        }
+
+        // ================= CAD & HINGE INSPECTOR CANVAS =================
+        function setInspectorMode(mode) {
+            activeInspectorMode = mode;
+            if (mode === 'robpart2') {
+                document.getElementById('inspectorTitle').innerText = 'Forearm Shell CAD Model (RobPart2 / RobPart5)';
+                document.getElementById('inspectorSub').innerText = 'Rotate view angle and inspect key mounting features';
+                document.getElementById('btn-mode-robpart2').className = 'px-2.5 py-1 text-xs font-semibold rounded bg-white shadow text-amber-700';
+                document.getElementById('btn-mode-finger').className = 'px-2.5 py-1 text-xs font-semibold rounded text-slate-600 hover:text-slate-900';
+                document.getElementById('cadControlsRobPart').classList.remove('hidden');
+                document.getElementById('cadControlsFinger').classList.add('hidden');
+                document.getElementById('panel-robpart2').classList.remove('hidden');
+                document.getElementById('panel-finger').classList.add('hidden');
+            } else {
+                document.getElementById('inspectorTitle').innerText = 'Finger Joint Assembly Visualizer';
+                document.getElementById('inspectorSub').innerText = 'Inspect exploded parts, joint pins, and tendon line channels';
+                document.getElementById('btn-mode-finger').className = 'px-2.5 py-1 text-xs font-semibold rounded bg-white shadow text-amber-700';
+                document.getElementById('btn-mode-robpart2').className = 'px-2.5 py-1 text-xs font-semibold rounded text-slate-600 hover:text-slate-900';
+                document.getElementById('cadControlsRobPart').classList.add('hidden');
+                document.getElementById('cadControlsFinger').classList.remove('hidden');
+                document.getElementById('panel-robpart2').classList.add('hidden');
+                document.getElementById('panel-finger').classList.remove('hidden');
+            }
+            drawCadInspector();
+        }
+
+        function updateCadRotation(val) {
+            cadRotationDeg = parseInt(val, 10);
+            document.getElementById('cadRotVal').innerText = `${cadRotationDeg}°`;
+            drawCadInspector();
+        }
+
+        function setFingerView(view) {
+            currentFingerView = view;
+            ['exploded', 'assembled', 'tendons'].forEach(v => {
+                const btn = document.getElementById(`btn-view-${v}`);
+                if (v === view) {
+                    btn.className = 'px-2.5 py-1 text-xs font-semibold rounded bg-white shadow text-amber-700 border border-amber-200';
+                } else {
+                    btn.className = 'px-2.5 py-1 text-xs font-semibold rounded text-slate-600 hover:text-slate-900';
+                }
+            });
+            drawCadInspector();
+        }
+
+        function updateFingerAngle(val) {
+            fingerFlexionAngle = parseInt(val, 10);
+            document.getElementById('flexionAngleVal').innerText = `${fingerFlexionAngle}°`;
+            drawCadInspector();
+        }
+
+        function drawCadInspector() {
+            const canvas = document.getElementById('cadCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (activeInspectorMode === 'robpart2') {
+                drawRobPart2Shell(ctx, canvas.width, canvas.height);
+            } else {
+                drawFingerAnatomyOnCanvas(ctx, canvas.width, canvas.height);
+            }
+        }
+
+        // Render 3D projected visualization of RobPart2 (Forearm Shell)
+        function drawRobPart2Shell(ctx, width, height) {
+            const cx = width / 2;
+            const cy = height / 2 + 10;
+            const rad = (cadRotationDeg * Math.PI) / 180;
+            const isWire = document.getElementById('chkWireframe')?.checked;
+            const isHoles = document.getElementById('chkHighlightHoles')?.checked;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            // Scale & Projection variables
+            const scale = 1.1;
+
+            // Generate curved 3D shell surface mesh (half cylinder with top lip)
+            const rows = 16;
+            const cols = 8;
+            const radius = 75 * scale;
+            const shellHeight = 190 * scale;
+
+            // Compute projected vertices
+            const grid = [];
+            for (let r = 0; r <= rows; r++) {
+                grid[r] = [];
+                const v = r / rows; // 0 (top) to 1 (bottom)
+                const y = -shellHeight / 2 + v * shellHeight;
+
+                // Tapering toward bottom
+                const currentRadius = radius * (1 - 0.15 * v);
+
+                // Top rim lip enlargement
+                const rimOffset = (r <= 2) ? 8 : 0;
+
+                for (let c = 0; c <= cols; c++) {
+                    const u = c / cols; // 0 to 1 (angle along half cylinder)
+                    const theta = (u * Math.PI * 0.85) - (Math.PI * 0.425) + rad;
+
+                    const x = (currentRadius + rimOffset) * Math.sin(theta);
+                    const z = (currentRadius + rimOffset) * Math.cos(theta);
+
+                    // Perspective projection
+                    const fov = 400;
+                    const projScale = fov / (fov + z + 150);
+                    const px = x * projScale;
+                    const py = y * projScale;
+
+                    grid[r][c] = { x: px, y: py, z: z, r: r, c: c };
+                }
+            }
+
+            // Draw Shell Surfaces or Wireframe
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const p1 = grid[r][c];
+                    const p2 = grid[r][c + 1];
+                    const p3 = grid[r + 1][c + 1];
+                    const p4 = grid[r + 1][c];
+
+                    // Light source directional shading
+                    const avgZ = (p1.z + p2.z + p3.z + p4.z) / 4;
+                    const lightNormal = Math.max(0.1, 1 - (avgZ / (radius * 1.5)));
+
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.lineTo(p3.x, p3.y);
+                    ctx.lineTo(p4.x, p4.y);
+                    ctx.closePath();
+
+                    if (!isWire) {
+                        // Curved smooth plastic gradient
+                        const gray = Math.floor(180 + lightNormal * 65);
+                        ctx.fillStyle = `rgb(${gray - 10}, ${gray}, ${gray + 10})`;
+                        ctx.fill();
+                        ctx.strokeStyle = `rgba(148, 163, 184, 0.4)`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    } else {
+                        ctx.strokeStyle = '#0284C7';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Draw Top RotaWrist1 Seating Groove Line
+            const topPt1 = grid[2][0];
+            const topPt2 = grid[2][cols];
+            ctx.beginPath();
+            ctx.moveTo(topPt1.x, topPt1.y);
+            for (let c = 1; c <= cols; c++) {
+                ctx.lineTo(grid[2][c].x, grid[2][c].y);
+            }
+            ctx.strokeStyle = '#D97706';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Highlight Drill Hole Positions if Enabled
+            if (isHoles) {
+                // 1. Top Seating Lip Label
+                ctx.fillStyle = '#D97706';
+                ctx.beginPath();
+                ctx.arc(grid[1][Math.floor(cols/2)].x, grid[1][Math.floor(cols/2)].y, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#92400E';
+                ctx.font = 'bold 10px system-ui';
+                ctx.fillText('⚡ RotaWrist1 Seat Lip', grid[1][Math.floor(cols/2)].x + 10, grid[1][Math.floor(cols/2)].y + 3);
+
+                // 2. 6mm Side Thumb Servo Hole (on r=12, c=1 edge)
+                const hole6mm = grid[11][1];
+                ctx.fillStyle = '#DC2626';
+                ctx.beginPath();
+                ctx.arc(hole6mm.x, hole6mm.y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.fillStyle = '#991B1B';
+                ctx.font = 'bold 10px monospace';
+                ctx.fillText('🔴 6.0mm Redrill Hole', hole6mm.x - 110, hole6mm.y + 3);
+
+                // 3. 3mm Mating Edge Holes
+                const hole3mmA = grid[5][cols];
+                const hole3mmB = grid[13][cols];
+
+                [hole3mmA, hole3mmB].forEach(h => {
+                    ctx.fillStyle = '#0284C7';
+                    ctx.beginPath();
+                    ctx.arc(h.x, h.y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                });
+
+                ctx.fillStyle = '#075985';
+                ctx.font = 'bold 10px monospace';
+                ctx.fillText('🔵 3mm Bolt / Nut Cavities', hole3mmB.x + 10, hole3mmB.y + 3);
+            }
+
+            ctx.restore();
+        }
+
+        // Render Finger Hinge Mechanics
+        function drawFingerAnatomyOnCanvas(ctx, width, height) {
+            const isExploded = currentFingerView === 'exploded';
+            const isTendons = currentFingerView === 'tendons';
+
+            const startX = 50;
+            const startY = 200;
+            const radAngle = (fingerFlexionAngle * Math.PI) / 180;
+            const gap = isExploded ? 60 : 0;
+
+            const p3Width = 95;
+            const p3Height = 42;
+            const p2Width = 95;
+            const p2Height = 36;
+            const p1Width = 75;
+            const p1Height = 30;
+
+            ctx.save();
+            ctx.translate(startX, startY);
+
+            // Part 3: Base
+            ctx.fillStyle = '#E2E8F0';
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 2.5;
+
+            ctx.beginPath();
+            ctx.roundRect(0, -p3Height/2, p3Width, p3Height, 8);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#D97706';
+            ctx.beginPath();
+            ctx.arc(15, 0, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#059669';
+            ctx.font = 'bold 11px system-ui';
+            ctx.fillText('Part 3: Base (index1)', 8, -p3Height/2 - 6);
+
+            // Part 2: Medial
+            const p2X = p3Width + gap;
+            ctx.translate(p2X, 0);
+            if (!isExploded) ctx.rotate(radAngle * 0.5);
+
+            ctx.fillStyle = '#F1F5F9';
+            ctx.strokeStyle = '#0284C7';
+            ctx.lineWidth = 2.5;
+
+            ctx.beginPath();
+            ctx.roundRect(0, -p2Height/2, p2Width, p2Height, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#D97706';
+            ctx.beginPath();
+            ctx.arc(12, 0, 4.5, 0, Math.PI * 2);
+            ctx.arc(p2Width - 12, 0, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#0284C7';
+            ctx.font = 'bold 11px system-ui';
+            ctx.fillText('Part 2: Medial (index2)', 8, -p2Height/2 - 6);
+
+            // Part 1: Distal Tip
+            const p1X = p2Width + gap;
+            ctx.translate(p1X, 0);
+            if (!isExploded) ctx.rotate(radAngle * 0.5);
+
+            ctx.fillStyle = '#FAF5FF';
+            ctx.strokeStyle = '#D97706';
+            ctx.lineWidth = 2.5;
+
+            ctx.beginPath();
+            ctx.moveTo(0, -p1Height/2);
+            ctx.lineTo(p1Width - 20, -p1Height/2);
+            ctx.quadraticCurveTo(p1Width, -p1Height/2, p1Width, 0);
+            ctx.quadraticCurveTo(p1Width, p1Height/2, p1Width - 20, p1Height/2);
+            ctx.lineTo(0, p1Height/2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#78350F';
+            ctx.beginPath();
+            ctx.arc(p1Width - 14, 0, 9, -Math.PI/2, Math.PI/2);
+            ctx.fill();
+
+            ctx.fillStyle = '#D97706';
+            ctx.beginPath();
+            ctx.arc(10, 0, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#D97706';
+            ctx.font = 'bold 11px system-ui';
+            ctx.fillText('Part 1: Tip (index3)', 5, -p1Height/2 - 6);
+
+            ctx.restore();
+
+            if (isExploded) {
+                ctx.strokeStyle = '#CBD5E1';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(startX + p3Width + p2Width + p1Width + (gap * 2), startY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            if (isTendons) {
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#DC2626';
+                ctx.beginPath();
+                ctx.moveTo(30, startY + 14);
+                ctx.lineTo(startX + p3Width + p2Width + p1Width - 20, startY + 14);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#2563EB';
+                ctx.beginPath();
+                ctx.moveTo(30, startY - 14);
+                ctx.lineTo(startX + p3Width + p2Width + p1Width - 20, startY - 14);
+                ctx.stroke();
+            }
+        }
+
+        // ================= PROGRESS TRACKER =================
+        function updateProgress() {
+            const checkboxes = document.querySelectorAll('.step-check');
+            let checkedCount = 0;
+            checkboxes.forEach(cb => {
+                if (cb.checked) checkedCount++;
+            });
+            const total = checkboxes.length;
+            const percent = Math.round((checkedCount / total) * 100);
+
+            document.getElementById('progressBar').style.width = `${percent}%`;
+            document.getElementById('progressPercent').innerText = `${percent}%`;
+            document.getElementById('progressCount').innerText = `${checkedCount}/${total}`;
+        }
+
+        // ================= DRILL CALCULATOR =================
+        function lookupDrillBit() {
+            const val = document.getElementById('drillCalcSelect').value;
+            const resDiv = document.getElementById('drillCalcResult');
+            const out = document.getElementById('drillBitOutput');
+            const note = document.getElementById('drillBitNote');
+
+            if (!val) {
+                resDiv.classList.add('hidden');
+                return;
+            }
+
+            resDiv.classList.remove('hidden');
+
+            switch(val) {
+                case 'd2':
+                    out.innerText = '2.0 mm Drill Bit';
+                    note.innerText = 'Used for ServoPulley actuator horn holes and fingertip nail hinge joints.';
+                    break;
+                case 'd25':
+                    out.innerText = '2.5 mm Drill Bit';
+                    note.innerText = 'Used for RotaWrist2 lining channels and Wrist cover adaptation screws.';
+                    break;
+                case 'd3':
+                    out.innerText = '3.0 mm Drill Bit';
+                    note.innerText = 'Outer finger hinge joints (tight pin fit) and finger constraint covers.';
+                    break;
+                case 'd35':
+                    out.innerText = '3.2 mm or 3.5 mm Drill Bit';
+                    note.innerText = 'Inner finger hinge joints (smooth clearance rotation) and main Wrist cover hinges.';
+                    break;
+                case 'd6':
+                    out.innerText = '6.0 mm Drill Bit';
+                    note.innerText = 'RobPart2 side hole for mounting double-actuated thumb servo.';
+                    break;
+                case 'd8':
+                    out.innerText = '8.0 mm Drill Bit';
+                    note.innerText = 'Main structural bolts for Wristlarge, Wristsmall, RobPart1, and RotaWrist3 gear center.';
+                    break;
+            }
+        }
+
+        // ================= CHART.JS INITIALIZATION =================
+        function initCharts() {
+            // Slicer Chart (Bar Chart)
+            const ctx1 = document.getElementById('slicerChart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: ['Finger Phalanges', 'Wrist Components', 'Forearm Shells', 'Finger Covers'],
+                    datasets: [
+                        {
+                            label: 'Infill Density (%)',
+                            data: [30, 30, 30, 30],
+                            backgroundColor: 'rgba(217, 119, 6, 0.7)',
+                            borderColor: 'rgba(217, 119, 6, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Wall Shell (mm)',
+                            data: [1.5, 2.0, 2.0, 2.0],
+                            backgroundColor: 'rgba(2, 132, 199, 0.7)',
+                            borderColor: 'rgba(2, 132, 199, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 35
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+            // Hardware Chart (Doughnut Chart)
+            const ctx2 = document.getElementById('hardwareChart').getContext('2d');
+            new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Finger Pins (3mm Filament / Bolts)', '8mm x 8cm Wrist Bolt', '8mm x 4cm Thumb Bolt', '8mm x 6cm Forearm Bolt', 'Tendon Lines (200LB Braided)'],
+                    datasets: [{
+                        data: [16, 1, 1, 1, 10],
+                        backgroundColor: [
+                            '#D97706',
+                            '#0284C7',
+                            '#059669',
+                            '#6366F1',
+                            '#EC4899'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        // ================= AI SERVO HAND CANVAS VISUALIZER =================
+        function toggleFinger(index) {
+            fingerStates[index] = fingerStates[index] === 1 ? 0 : 1;
+            updateSimulatorState();
+        }
+
+        function applyGesture(states) {
+            fingerStates = [...states];
+            updateSimulatorState();
+        }
+
+        function updateSimulatorState() {
+            // Update serial text display
+            const str = '$' + fingerStates.join('');
+            document.getElementById('serialDisplayBadge').innerText = str;
+
+            // Update button styles & table states
+            const pins = [7, 9, 11, 8, 10];
+            fingerStates.forEach((st, idx) => {
+                const btn = document.getElementById(`btn-f${idx}`);
+                const angText = document.getElementById(`angle-${idx}`);
+                const pinSt = document.getElementById(`pin-st-${idx}`);
+                const pinAng = document.getElementById(`pin-ang-${idx}`);
+
+                const angle = st === 1 ? 180 : 0;
+
+                if (st === 1) {
+                    btn.className = 'py-2 px-1 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-sm transition';
+                } else {
+                    btn.className = 'py-2 px-1 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 shadow-sm transition';
+                }
+
+                angText.innerText = `${angle}°`;
+                if (pinSt) pinSt.innerText = st;
+                if (pinAng) pinAng.innerText = `${angle}°`;
+            });
+
+            drawHand();
+        }
+
+        function drawHand() {
+            const canvas = document.getElementById('handCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Center Origin for Palm
+            const palmX = 190;
+            const palmY = 230;
+
+            // Draw Forearm / Wrist Base
+            ctx.fillStyle = '#E2E8F0';
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 3;
+
+            // Forearm Shell
+            ctx.beginPath();
+            ctx.moveTo(palmX - 55, palmY + 70);
+            ctx.lineTo(palmX + 55, palmY + 70);
+            ctx.lineTo(palmX + 45, palmY + 25);
+            ctx.lineTo(palmX - 45, palmY + 25);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Wrist Rotating Joint
+            ctx.fillStyle = '#CBD5E1';
+            ctx.beginPath();
+            ctx.arc(palmX, palmY + 25, 20, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Palm Structure
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.moveTo(palmX - 45, palmY + 20);
+            ctx.lineTo(palmX + 45, palmY + 20);
+            ctx.lineTo(palmX + 40, palmY - 45);
+            ctx.lineTo(palmX - 40, palmY - 45);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Palm Details / Tensioner lines visual
+            ctx.strokeStyle = '#94A3B8';
+            ctx.lineWidth = 1;
+            for (let i = -30; i <= 30; i += 15) {
+                ctx.beginPath();
+                ctx.moveTo(palmX + i, palmY + 20);
+                ctx.lineTo(palmX + i * 0.8, palmY - 45);
+                ctx.stroke();
+            }
+
+            // Finger Definitions: [startX, startY, baseAngle, length, state]
+            const fingers = [
+                { name: 'Thumb', x: palmX - 40, y: palmY - 10, baseAngle: -Math.PI * 0.75, len: 45, state: fingerStates[0] },
+                { name: 'Index', x: palmX - 30, y: palmY - 45, baseAngle: -Math.PI * 0.55, len: 65, state: fingerStates[1] },
+                { name: 'Middle', x: palmX - 10, y: palmY - 45, baseAngle: -Math.PI * 0.50, len: 72, state: fingerStates[2] },
+                { name: 'Ring', x: palmX + 10, y: palmY - 45, baseAngle: -Math.PI * 0.45, len: 65, state: fingerStates[3] },
+                { name: 'Pinky', x: palmX + 30, y: palmY - 45, baseAngle: -Math.PI * 0.40, len: 52, state: fingerStates[4] }
+            ];
+
+            // Render Digits & Joint Nodes
+            fingers.forEach((f, idx) => {
+                const isOpen = f.state === 1;
+                ctx.lineWidth = 8;
+                ctx.lineCap = 'round';
+
+                const j1X = f.x;
+                const j1Y = f.y;
+
+                let bendAngle = 0;
+                if (!isOpen) {
+                    bendAngle = idx === 0 ? Math.PI * 0.45 : Math.PI * 0.65;
+                }
+
+                const currentAngle = f.baseAngle + bendAngle;
+
+                const seg1 = f.len * 0.55;
+                const j2X = j1X + Math.cos(currentAngle) * seg1;
+                const j2Y = j1Y + Math.sin(currentAngle) * seg1;
+
+                const tipAngle = currentAngle + (isOpen ? 0 : Math.PI * 0.35);
+                const seg2 = f.len * 0.45;
+                const tipX = j2X + Math.cos(tipAngle) * seg2;
+                const tipY = j2Y + Math.sin(tipAngle) * seg2;
+
+                // Tendon Cable
+                ctx.strokeStyle = isOpen ? '#D97706' : '#94A3B8';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(j1X, j1Y);
+                ctx.lineTo(j2X, j2Y);
+                ctx.lineTo(tipX, tipY);
+                ctx.stroke();
+
+                // Finger Segments
+                ctx.strokeStyle = isOpen ? '#059669' : '#334155';
+                ctx.lineWidth = idx === 0 ? 10 : 8;
+
+                ctx.beginPath();
+                ctx.moveTo(j1X, j1Y);
+                ctx.lineTo(j2X, j2Y);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(j2X, j2Y);
+                ctx.lineTo(tipX, tipY);
+                ctx.stroke();
+
+                // Knuckle Dots
+                ctx.fillStyle = '#D97706';
+                ctx.beginPath();
+                ctx.arc(j1X, j1Y, 4, 0, Math.PI * 2);
+                ctx.arc(j2X, j2Y, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Fingertip Sensor Cap
+                ctx.fillStyle = isOpen ? '#10B981' : '#F59E0B';
+                ctx.beginPath();
+                ctx.arc(tipX, tipY, 4.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        // ================= 3D MODELLED PARTS: STL VIEWER + CAROUSEL =================
+
+        // Metadata for every uploaded STL model. `key` maps to window.STL_MODELS[key] (base64 STL data)
+        const stlPartsData = [
+            { key: "robpart2",     name: "RobPart2",            cat: "Forearm & Covers",  note: "Forearm shell structure — redrill 6mm side hole for optional thumb servo." },
+            { key: "robpart3",     name: "RobPart3",             cat: "Forearm & Covers",  note: "Forearm upper cover, mates with RobPart4." },
+            { key: "robpart4",     name: "RobPart4",             cat: "Forearm & Covers",  note: "Forearm upper cover mate for RobPart3." },
+            { key: "robpart5",     name: "RobPart5",             cat: "Forearm & Covers",  note: "Forearm lower servo bed housing — mates with RobPart2." },
+            { key: "robcap",       name: "RobCap3",              cat: "Forearm & Covers",  note: "Forearm end cap, glued to ElbowShaftGear." },
+            { key: "wristlarge",   name: "Wristlarge",           cat: "Wrist Mechanism",   note: "Main hand base plate — 8mm main hinge bolts." },
+            { key: "wristsmall",   name: "Wristsmall",           cat: "Wrist Mechanism",   note: "Restrains backward hand bending." },
+            { key: "boltEntretoise", name: "Bolt_entretoise",    cat: "Wrist Mechanism",   note: "Spacer bolt — omit if using electrical sensor wires." },
+            { key: "topsurface",   name: "TopSurface",           cat: "Hand & Fingers",    note: "Palm upper shield surface." },
+            { key: "coverfinger",  name: "CoverFinger",          cat: "Hand & Fingers",    note: "Finger joint limiter cover — print standing vertically with support." },
+            { key: "thumb",        name: "Thumb",                cat: "Hand & Fingers",    note: "Thumb digit assembly, 3-part hinge." },
+            { key: "index",        name: "Index",                cat: "Hand & Fingers",    note: "Index finger digit — index3 part." },
+            { key: "majeure",      name: "Majeure (Middle)",     cat: "Hand & Fingers",    note: "Middle finger digit — majeure3 part." },
+            { key: "ringfinger",   name: "RingFinger",           cat: "Hand & Fingers",    note: "Ring finger digit assembly." },
+            { key: "auriculaire",  name: "Auriculaire (Pinky)",  cat: "Hand & Fingers",    note: "Pinky finger digit assembly." }
+        ];
+
+        let stlCurrentIndex = 0;
+        let threeInited = false;
+        let threeScene, threeCamera, threeRenderer, threeControls, threeMesh, threeLight;
+        let viewerWireframe = false;
+        let viewerAutorotate = false;
+        const meshCache = {}; // key -> THREE.BufferGeometry (parsed once, reused)
+
+        function initStlCarousel() {
+            const track = document.getElementById('carouselTrack');
+            const list = document.getElementById('carouselList');
+            track.innerHTML = '';
+            list.innerHTML = '';
+
+            stlPartsData.forEach((part, idx) => {
+                // Slide chip (compact, for the sliding strip)
+                const chip = document.createElement('button');
+                chip.id = `chip-${idx}`;
+                chip.className = 'shrink-0 w-24 text-center px-2 py-2 rounded-lg border text-[10px] font-semibold transition';
+                chip.innerHTML = `<div class="text-lg mb-0.5">🧩</div><div class="truncate">${part.name}</div>`;
+                chip.onclick = () => selectStlPart(idx);
+                track.appendChild(chip);
+
+                // Full list row (for direct selection / scanning all parts)
+                const row = document.createElement('button');
+                row.id = `row-${idx}`;
+                row.className = 'w-full text-left px-3 py-2 rounded-lg border text-xs flex items-center justify-between gap-2 transition';
+                row.innerHTML = `
+                    <span class="flex items-center gap-2 min-w-0">
+                        <span class="text-sm shrink-0">🧩</span>
+                        <span class="truncate">
+                            <span class="block font-semibold text-slate-900">${part.name}</span>
+                            <span class="block text-[10px] text-slate-500">${part.cat}</span>
+                        </span>
+                    </span>
+                `;
+                row.onclick = () => selectStlPart(idx);
+                list.appendChild(row);
+            });
+
+            highlightStlSelection();
+        }
+
+        function highlightStlSelection() {
+            stlPartsData.forEach((part, idx) => {
+                const chip = document.getElementById(`chip-${idx}`);
+                const row = document.getElementById(`row-${idx}`);
+                if (idx === stlCurrentIndex) {
+                    chip.className = 'shrink-0 w-24 text-center px-2 py-2 rounded-lg border-2 border-amber-500 bg-amber-50 text-amber-800 text-[10px] font-semibold transition';
+                    row.className = 'w-full text-left px-3 py-2 rounded-lg border-2 border-amber-500 bg-amber-50 text-xs flex items-center justify-between gap-2 transition';
+                } else {
+                    chip.className = 'shrink-0 w-24 text-center px-2 py-2 rounded-lg border border-slate-200 hover:border-amber-300 text-[10px] font-semibold text-slate-600 transition';
+                    row.className = 'w-full text-left px-3 py-2 rounded-lg border border-slate-200 hover:border-amber-300 hover:bg-slate-50 text-xs flex items-center justify-between gap-2 transition';
+                }
+            });
+            document.getElementById('carouselCount').innerText = `${stlCurrentIndex + 1} / ${stlPartsData.length}`;
+
+            // Slide the strip so the active chip stays roughly centered
+            const track = document.getElementById('carouselTrack');
+            const chipWidth = 104; // 96px width + 8px gap approx
+            const wrapWidth = document.getElementById('carouselTrackWrap').clientWidth;
+            const offset = Math.max(0, (stlCurrentIndex * chipWidth) - (wrapWidth / 2) + (chipWidth / 2));
+            track.style.transform = `translateX(-${offset}px)`;
+        }
+
+        function carouselStep(dir) {
+            stlCurrentIndex = (stlCurrentIndex + dir + stlPartsData.length) % stlPartsData.length;
+            selectStlPart(stlCurrentIndex);
+        }
+
+        function selectStlPart(idx) {
+            stlCurrentIndex = idx;
+            highlightStlSelection();
+            const part = stlPartsData[idx];
+            document.getElementById('viewerPartName').innerText = part.name;
+            document.getElementById('viewerPartMeta').innerText = `Category: ${part.cat}`;
+            document.getElementById('viewerPartNote').innerText = part.note;
+            loadStlIntoViewer(part.key);
+        }
+
+        // ---- Three.js WebGL viewer setup ----
+        function initThreeViewer() {
+            if (threeInited) return;
+            threeInited = true;
+
+            const canvas = document.getElementById('stlViewerCanvas');
+            const holder = document.getElementById('viewerCanvasHolder');
+
+            threeScene = new THREE.Scene();
+            threeScene.background = new THREE.Color(0xf1f5f9);
+
+            threeCamera = new THREE.PerspectiveCamera(45, holder.clientWidth / holder.clientHeight, 0.1, 5000);
+            threeCamera.position.set(0, 0, 150);
+
+            threeRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            threeRenderer.setSize(holder.clientWidth, holder.clientHeight);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.55);
+            threeScene.add(ambient);
+            threeLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            threeLight.position.set(1, 1, 1);
+            threeScene.add(threeLight);
+            const backLight = new THREE.DirectionalLight(0xffffff, 0.35);
+            backLight.position.set(-1, -0.5, -1);
+            threeScene.add(backLight);
+
+            // Orbit controls
+            threeControls = new THREE.OrbitControls(threeCamera, threeRenderer.domElement);
+            threeControls.enableDamping = true;
+            threeControls.dampingFactor = 0.08;
+            threeControls.screenSpacePanning = true;
+
+            window.addEventListener('resize', onViewerResize);
+
+            animateViewer();
+
+            // Load first part
+            selectStlPart(stlCurrentIndex);
+        }
+
+        function onViewerResize() {
+            if (!threeRenderer) return;
+            const holder = document.getElementById('viewerCanvasHolder');
+            if (!holder) return;
+            const w = holder.clientWidth, h = holder.clientHeight;
+            threeCamera.aspect = w / h;
+            threeCamera.updateProjectionMatrix();
+            threeRenderer.setSize(w, h);
+        }
+
+        function animateViewer() {
+            requestAnimationFrame(animateViewer);
+            if (!threeRenderer) return;
+            if (viewerAutorotate && threeMesh) {
+                threeMesh.rotation.z += 0.006;
+            }
+            threeControls.update();
+            threeRenderer.render(threeScene, threeCamera);
+        }
+
+        function base64ToArrayBuffer(base64) {
+            const binaryStr = atob(base64);
+            const len = binaryStr.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryStr.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function loadStlIntoViewer(key) {
+            const overlay = document.getElementById('viewerLoadingOverlay');
+            overlay.classList.remove('hidden');
+            overlay.style.display = 'flex';
+
+            // Use rAF so the loading overlay actually paints before the (synchronous) parse work
+            requestAnimationFrame(() => {
+                try {
+                    let geometry = meshCache[key];
+                    if (!geometry) {
+                        const base64 = window.STL_MODELS && window.STL_MODELS[key];
+                        if (!base64) {
+                            throw new Error('Model data not found for ' + key);
+                        }
+                        const buffer = base64ToArrayBuffer(base64);
+                        const loader = new THREE.STLLoader();
+                        geometry = loader.parse(buffer);
+                        geometry.center();
+                        geometry.computeVertexNormals();
+                        meshCache[key] = geometry;
+                    }
+
+                    if (threeMesh) {
+                        threeScene.remove(threeMesh);
+                        threeMesh.material.dispose();
+                    }
+
+                    const material = new THREE.MeshStandardMaterial({
+                        color: 0xd6dee8,
+                        metalness: 0.15,
+                        roughness: 0.55,
+                        wireframe: viewerWireframe
+                    });
+
+                    threeMesh = new THREE.Mesh(geometry, material);
+                    threeScene.add(threeMesh);
+
+                    fitCameraToMesh(geometry);
+                } catch (err) {
+                    console.error('STL load error:', err);
+                    document.getElementById('viewerPartNote').innerText = 'Could not load this model: ' + err.message;
+                } finally {
+                    overlay.style.display = 'none';
+                }
+            });
+        }
+
+        function fitCameraToMesh(geometry) {
+            geometry.computeBoundingSphere();
+            const sphere = geometry.boundingSphere;
+            const radius = sphere ? sphere.radius : 50;
+            const dist = radius * 2.6 + 10;
+
+            threeCamera.position.set(dist * 0.55, dist * 0.35, dist * 0.75);
+            threeCamera.near = Math.max(0.1, radius / 100);
+            threeCamera.far = dist * 20;
+            threeCamera.updateProjectionMatrix();
+
+            threeControls.target.set(0, 0, 0);
+            threeControls.minDistance = radius * 0.3;
+            threeControls.maxDistance = radius * 12;
+            threeControls.update();
+        }
+
+        function toggleViewerWireframe() {
+            viewerWireframe = !viewerWireframe;
+            if (threeMesh) threeMesh.material.wireframe = viewerWireframe;
+            const btn = document.getElementById('btnViewerWire');
+            btn.className = viewerWireframe
+                ? 'px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-amber-100 text-amber-800 border border-amber-300 transition'
+                : 'px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition';
+        }
+
+        function toggleViewerAutorotate() {
+            viewerAutorotate = !viewerAutorotate;
+            const btn = document.getElementById('btnViewerRotate');
+            btn.className = viewerAutorotate
+                ? 'px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-amber-100 text-amber-800 border border-amber-300 transition'
+                : 'px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition';
+        }
+
+        function resetViewerCamera() {
+            if (threeMesh) fitCameraToMesh(threeMesh.geometry);
+        }
+    </script>
+</body>
+</html>
